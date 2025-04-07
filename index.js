@@ -1,6 +1,7 @@
-const express = require('express');
+const express = require('express')
 const cors = require('cors');
 const app = express();
+const jwt = require('jsonwebtoken');
 require('dotenv').config()
 const port = process.env.PORT || 3005
 
@@ -14,6 +15,8 @@ app.use(express.json())
 
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { access } = require('fs');
+
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASS}@cluster0.it2xzvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -47,8 +50,36 @@ async function run() {
       res.send(result)
     })
 
+    //JWT related api
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: '1h'
+      });
+      res.send({ token });
+    })
+    
+
+    // middlewares
+    const verifyToken = (req, res, next)=> {
+      console.log("Inside verify token",req.headers.authorization);
+      if(!req.headers.authorization){
+        return res.status(401).send({message: 'forbidden access'});
+      }
+      const token = req.headers.authorization.split(' ')[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(err, decoded)=> {
+        if(err){
+          return res.status(401).send({message: 'forbidden access'})
+        }
+        req.decoded = decoded;
+        next();
+      })
+
+    }
+
+
     //users related api
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     })
@@ -67,25 +98,27 @@ async function run() {
       res.send(result)
     })
 
-    app.patch('/users/admin/:id', async(req, res)=> {
+    app.patch('/users/admin/:id', async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)}
+      const filter = { _id: new ObjectId(id) }
       const updatedDoc = {
-        $set:{
+        $set: {
           role: 'admin'
         }
       }
-      const result  = await userCollection.updateOne(filter, updatedDoc)
+      const result = await userCollection.updateOne(filter, updatedDoc)
       res.send(result)
     })
 
-    
+
     app.delete('/users/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await userCollection.deleteOne(query);
       res.send(result);
     })
+
+
 
     //carts related api 
     app.get('/carts', async (req, res) => {
