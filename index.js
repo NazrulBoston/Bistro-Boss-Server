@@ -15,7 +15,7 @@ app.use(express.json())
 
 
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const { access } = require('fs');
+// const { access } = require('fs');
 
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASS}@cluster0.it2xzvi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -58,18 +58,18 @@ async function run() {
       });
       res.send({ token });
     })
-    
+
 
     // middlewares
-    const verifyToken = (req, res, next)=> {
-      console.log("Inside verify token",req.headers.authorization);
-      if(!req.headers.authorization){
-        return res.status(401).send({message: 'forbidden access'});
+    const verifyToken = (req, res, next) => {
+      console.log("Inside verify token", req.headers.authorization);
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'unauthorized access' });
       }
       const token = req.headers.authorization.split(' ')[1];
-      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(err, decoded)=> {
-        if(err){
-          return res.status(401).send({message: 'forbidden access'})
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: 'unauthorized access' })
         }
         req.decoded = decoded;
         next();
@@ -83,6 +83,19 @@ async function run() {
       const result = await userCollection.find().toArray();
       res.send(result);
     })
+
+    app.get('/users/admin/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const admin = user?.role === 'admin';
+      res.send({ admin });
+
+    })
+
 
 
     app.post('/users', async (req, res) => {
@@ -150,8 +163,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-
 
 
 
