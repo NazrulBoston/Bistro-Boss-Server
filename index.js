@@ -24,8 +24,7 @@ const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
-    deprecationErrors: true,
-  }
+    deprecationErrors: true, }
 });
 
 async function run() {
@@ -38,11 +37,7 @@ async function run() {
     const reviewsCollection = client.db("BistroBoss").collection("reveiws");
     const cartCollection = client.db("BistroBoss").collection("carts");
 
-    //get all menu items 
-    app.get('/menu', async (req, res) => {
-      const result = await menuCollection.find().toArray()
-      res.send(result)
-    })
+
 
     //get all reviews 
     app.get("/reviews", async (req, res) => {
@@ -88,6 +83,7 @@ async function run() {
       }
       next();
     }
+
 
 
 
@@ -144,6 +140,29 @@ async function run() {
       const result = await userCollection.deleteOne(query);
       res.send(result);
     })
+
+
+      //menu related api 
+    app.get('/menu', async (req, res) => {
+      const result = await menuCollection.find().toArray()
+      res.send(result)
+    })
+
+    app.post("/menu",verifyToken, verifyAdmin, async (req, res)=> {
+      const item = req.body;
+      const result = await menuCollection.insertOne(item);
+      res.send(result);
+    })
+
+    app.delete('/menu/:id', verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await menuCollection.deleteOne(query) 
+      res.send(result)
+
+    })
+
+
 
 
 
