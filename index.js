@@ -24,7 +24,8 @@ const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
-    deprecationErrors: true, }
+    deprecationErrors: true,
+  }
 });
 
 async function run() {
@@ -73,13 +74,13 @@ async function run() {
     }
 
     //user verify admin after the verify token 
-    const verifyAdmin = async(req, res, next) => {
+    const verifyAdmin = async (req, res, next) => {
       const email = req.decoded.email;
-      const query = {email: email};
+      const query = { email: email };
       const user = await userCollection.findOne(query);
       const isAdmin = user?.role === 'admin'
-      if(!isAdmin){
-        return res.status(403).send({message: 'forbidden access'});
+      if (!isAdmin) {
+        return res.status(403).send({ message: 'forbidden access' });
       }
       next();
     }
@@ -105,8 +106,6 @@ async function run() {
       res.send({ admin });
 
     })
-
-
 
     app.post('/users', async (req, res) => {
       const user = req.body;
@@ -142,22 +141,58 @@ async function run() {
     })
 
 
-      //menu related api 
+
+    //menu related api 
     app.get('/menu', async (req, res) => {
       const result = await menuCollection.find().toArray()
       res.send(result)
     })
 
-    app.post("/menu",verifyToken, verifyAdmin, async (req, res)=> {
+
+    app.get('/menu/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await menuCollection.findOne(query);
+
+        if (!result) {
+          return res.status(404).send({ message: 'Menu item not found' });
+        }
+
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: 'Invalid ID or server error' });
+      }
+    });
+
+
+    app.post("/menu", verifyToken, verifyAdmin, async (req, res) => {
       const item = req.body;
       const result = await menuCollection.insertOne(item);
       res.send(result);
     })
 
+    app.patch('/menu/:id', async (req, res) => {
+      const item = req.body;
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          name: item.name,
+          category: item.category,
+          price: item.price,
+          recipe: item.recipe,
+          image: item.image
+        }
+      }
+      const result = await menuCollection.updateOne(filter, updatedDoc)
+      res.send(result);
+    });
+
     app.delete('/menu/:id', verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result = await menuCollection.deleteOne(query) 
+      const query = { _id: new ObjectId(id) }
+      const result = await menuCollection.deleteOne(query)
       res.send(result)
 
     })
@@ -172,7 +207,7 @@ async function run() {
       const query = { email: email }
       const result = await cartCollection.find(query).toArray();
       res.send(result)
-    }) 
+    })
 
     app.post('/carts', async (req, res) => {
       const cartItem = req.body;
